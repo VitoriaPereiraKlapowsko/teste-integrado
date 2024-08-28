@@ -4,6 +4,24 @@ import { app } from "../server"; // Certifique-se de que o caminho está correto
 import { Request, Response } from "express";
 import { Cliente } from "../models/Cliente";
 
+
+describe('Teste da Rota listarClientes', () => {
+  beforeAll(async () => {
+    await Cliente.destroy({ where: {} });
+  });
+
+  it('Deve retornar status 404 e mensagem apropriada quando não houver clientes', async () => {
+    const response = await request(app).get('/clientes');
+
+    expect(response.status).toBe(404);
+    expect(response.body).toHaveProperty('message', 'Nenhum cliente encontrado');
+  });
+
+  afterAll(async () => {
+    await Cliente.destroy({ where: {} });
+  });
+});
+
 describe("Teste da Rota incluirCliente", () => {
   let clienteId: number;
 
@@ -46,6 +64,7 @@ describe("Teste da Rota incluirCliente", () => {
     }
   });
 });
+
 
 describe("Teste da Rota GetClienteById", () => {
   it("Deve retornar o cliente correto quando o id é valido", async () => {
@@ -179,3 +198,5 @@ describe("Teste da Rota atualizarCliente", () => {
     await Cliente.destroy({ where: { id: [clienteId, clienteExistenteId] } });
   });
 });
+
+

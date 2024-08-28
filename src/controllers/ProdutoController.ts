@@ -76,3 +76,5 @@ export const getProdutoById = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Erro ao buscar produto" });
   }
 };
+
+

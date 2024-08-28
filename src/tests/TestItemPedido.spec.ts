@@ -3,6 +3,9 @@ import * as server from "../server";
 import { app } from "../server"; // Certifique-se de que o caminho está correto
 import { Request, Response } from "express";
 import { Produto } from "../models/Produto";
+import { Pedido } from '../models/Pedido';
+import { ItemDoPedido } from '../models/ItemDoPedido';
+import { Cliente } from '../models/Cliente';
 
 describe("Teste da Rota incluirProduto", () => {
   let produtoId: number;
@@ -130,3 +133,85 @@ describe("Teste da Rota atualizarProduto", () => {
     await Produto.destroy({ where: { id: produtoId } });
   });
 });
+
+describe("Teste da Rota itensDoPedido/:id", () => {
+  let clienteId: number;
+  let produtoId: number;
+  let pedidoId: number;
+  let itemDoPedidoId: number;
+
+  beforeAll(async () => {
+    // Cria um cliente
+    const cliente = await Cliente.create({
+      nome: "Cliente Teste",
+      sobrenome: "Sobrenome Teste",
+      cpf: "12345678900"
+    });
+    clienteId = cliente.id;
+
+    // Cria um produto
+    const produto = await Produto.create({
+      descricao: "Produto Teste"
+    });
+    produtoId = produto.id;
+
+    // Cria um pedido
+    const pedido = await Pedido.create({
+      clienteId: clienteId,
+      data: new Date()
+    });
+    pedidoId = pedido.id;
+
+    // Cria um item do pedido
+    const itemDoPedido = await ItemDoPedido.create({
+      pedidoId: pedidoId,
+      produtoId: produtoId,
+      quantidade: 1
+    });
+    itemDoPedidoId = itemDoPedido.id;
+  });
+
+  it("Deve retornar o item do pedido com informações do cliente, pedido e produto", async () => {
+    const response = await request(app).get(`/itensDoPedido/${itemDoPedidoId}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty("id", itemDoPedidoId);
+    expect(response.body).toHaveProperty("pedido");
+    expect(response.body).toHaveProperty("produto");
+    expect(response.body.pedido).toHaveProperty("id", pedidoId);
+    expect(response.body.produto).toHaveProperty("id", produtoId);
+    expect(response.body.pedido.clienteId).toBe(clienteId);
+    expect(response.body.produto.descricao).toBe("Produto Teste");
+  });
+
+  it("Deve retornar 404 se o item do pedido não for encontrado", async () => {
+    const response = await request(app).get("/itensDoPedido/999999");
+
+    expect(response.status).toBe(404);
+    expect(response.body).toHaveProperty("message", "Item do Pedido não encontrado");
+  });
+
+  it("Deve retornar 400 se o ID não for um número", async () => {
+    const response = await request(app).get("/itensDoPedido/abc");
+
+    expect(response.status).toBe(400);
+    expect(response.body).toHaveProperty("message", "ID deve ser um número");
+  });
+
+  it("Deve retornar o item do pedido em menos de 200ms", async () => {
+    const start = Date.now();
+    const response = await request(app).get(`/itensDoPedido/${itemDoPedidoId}`);
+    const duration = Date.now() - start;
+
+    expect(response.status).toBe(200);
+    expect(duration).toBeLessThan(200); 
+  });
+
+  afterAll(async () => {
+    await ItemDoPedido.destroy({ where: { id: itemDoPedidoId } });
+    await Pedido.destroy({ where: { id: pedidoId } });
+    await Produto.destroy({ where: { id: produtoId } });
+    await Cliente.destroy({ where: { id: clienteId } });
+  });
+});
+

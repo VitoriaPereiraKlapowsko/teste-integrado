@@ -3,14 +3,21 @@ import { Produto } from "../models/Produto";
 import { Cliente } from "../models/Cliente";
 import { Pedido } from "../models/Pedido";
 import { Op } from "sequelize";
+const request = require("supertest");
+import { app } from "../server"; 
 
 export const listarClientes = async (req: Request, res: Response) => {
   try {
     const clientes = await Cliente.findAll();
+
+    if (clientes.length === 0) {
+      return res.status(404).json({ message: 'Ops, Nenhum cliente encontrado...' });
+    }
+
     res.json({ clientes });
   } catch (error) {
-    console.error("Erro ao listar clientes:", error);
-    res.status(500).json({ message: "Erro ao listar clientes" });
+    console.error('Erro ao listar clientes: ', error);
+    res.status(500).json({ message: 'Erro ao listar clientes...' });
   }
 };
 
@@ -109,3 +116,42 @@ export const incluirCliente = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Erro ao incluir cliente" });
   }
 };
+
+describe("Testes de Integridade Relacional: Exclusão de Cliente com Pedidos Vinculados", () => {
+  let clienteId: number;
+  let pedidoId: number;
+
+  beforeAll(async () => {
+    const novoCliente = await Cliente.create({ // Cria um cliente e um pedido relacionado
+      nome: "Cliente Exemplo",
+      sobrenome: "Exemplo Sobrenome",
+      cpf: "98765432100"
+    });
+    clienteId = novoCliente.id;
+
+    const novoPedido = await Pedido.create({
+      data: "2024-08-15",
+      id_cliente: clienteId
+    });
+    pedidoId = novoPedido.id;
+  });
+
+  it("Deve impedir a exclusão de um cliente com pedidos associados", async () => {
+    const resposta = await request(app).delete(`/clientes/${clienteId}`);
+
+    expect(resposta.status).toBe(400); 
+    expect(resposta.body).toHaveProperty("message", "Cliente não pode ser removido devido a pedidos associados");
+
+    // Verifica se ainda está registrado
+    const clienteExistente = await Cliente.findByPk(clienteId);
+    expect(clienteExistente).not.toBeNull();
+
+    const pedidoExistente = await Pedido.findByPk(pedidoId); 
+    expect(pedidoExistente).not.toBeNull();
+  });
+
+  afterAll(async () => {
+    await Pedido.destroy({ where: { id: pedidoId } });
+    await Cliente.destroy({ where: { id: clienteId } });
+  });
+});
