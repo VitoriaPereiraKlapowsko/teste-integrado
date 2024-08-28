@@ -1,0 +1,13 @@
+Para rodar o projeto
+
+Instalar as dependencias com:
+npm install
+(as vezes é necessário instalar algumas dependencias separadas)
+
+mudar o .env (tirar o exemplo do nome e colocar informações do seu banco )
+
+Rodar com:
+npm run start-dev
+
+Criar a no banco a migration com o sequelize:
+npm sequelize-cli db:migrate
